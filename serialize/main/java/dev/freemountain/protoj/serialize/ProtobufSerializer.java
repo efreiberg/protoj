@@ -6,6 +6,9 @@ import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.BitSet;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.function.Supplier;
 
 import dev.freemountain.protoj.api.ProtobufField;
 import dev.freemountain.protoj.internal.TypeCompatibility;
@@ -34,16 +37,24 @@ public class ProtobufSerializer {
             throw new ProtobufSerializationException("Attempting to serialize non-message class " + message.getClass().getName());
         }
         // Get serializable fields
-//        Map<String, >
         for (Field field : message.getClass().getDeclaredFields()) {
             ProtobufField fieldAnnotation = field.getAnnotation(ProtobufField.class);
+            ProtobufMessage messageAnnotation = field.getAnnotation(ProtobufMessage.class);
             if (fieldAnnotation != null) {
                 ProtobufType protobufType = fieldAnnotation.protobufType();
                 // Check if field type is compatible with the protobuf type
                 if (!TypeCompatibility.check(protobufType, field.getType())) {
-
+                    throw new ProtobufSerializationException("Incompatable field type and and protobuf type found: " +
+                            field.getType() + " " + protobufType);
                 }
-                // Configure a resolver instance with a getter method as a parameter
+                // Serialize value
+                try {
+                    appendPrefix(byteStream, protobufType, fieldAnnotation.fieldNumber());
+                    append(byteStream, protobufType, field.get(message));
+                } catch (IllegalAccessException e) {
+                    throw new ProtobufSerializationException(e.getMessage());
+                }
+
             }
         }
         /**
@@ -60,6 +71,47 @@ public class ProtobufSerializer {
 
     private static boolean isMessageClass(Class clazz) {
         return clazz.getAnnotationsByType(ProtobufMessage.class).length > 0;
+    }
+
+    static <T> void append(ByteArrayOutputStream byteStream, ProtobufType type, Object value) {
+        switch (type) {
+            case DOUBLE:
+                appendFixed64(byteStream, (Double) value);
+                break;
+            case FLOAT:
+                appendFixed32(byteStream, (Float) value);
+                break;
+            case INT32:
+                appendFixed32(byteStream, (Integer) value);
+                break;
+            case INT64:
+                appendFixed64(byteStream, (Long) value);
+            case UINT32:
+                break;
+            case UINT64:
+                break;
+            case SINT32:
+                break;
+            case SINT64:
+                break;
+            case SFIXED32:
+                break;
+            case SFIXED64:
+                break;
+            case FIXED32:
+                break;
+            case FIXED64:
+                break;
+            case BOOL:
+                appendVarint(byteStream, (boolean) value == true ? 1 : 0);
+                break;
+            case STRING:
+                appendLengthDelimited(byteStream, (String) value);
+                break;
+            case BYTES:
+                appendLengthDelimited(byteStream, (byte[]) value);
+                break;
+        }
     }
 
     /**

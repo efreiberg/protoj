@@ -6,8 +6,6 @@ import dev.freemountain.protoj.api.ProtobufSerializationException;
 import dev.freemountain.protoj.api.ProtobufType;
 import org.junit.Test;
 
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 public class ProtobufSerializerTest {
 
@@ -25,7 +23,7 @@ public class ProtobufSerializerTest {
         @ProtobufMessage
         class TestMessage {
             @ProtobufField(fieldNumber = 0, protobufType = ProtobufType.INT32)
-            public int foo = 0;
+            public int foo = 10;
         }
         ProtobufSerializer.serialize(new TestMessage());
     }
