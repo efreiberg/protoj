@@ -6,9 +6,6 @@ import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.BitSet;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.function.Supplier;
 
 import dev.freemountain.protoj.api.ProtobufField;
 import dev.freemountain.protoj.internal.TypeCompatibility;
@@ -28,7 +25,6 @@ public class ProtobufSerializer {
 
     public static <T> ByteBuffer serialize(T message) {
         ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
-        serialize(byteStream, message);
         return serialize(byteStream, message);
     }
 
@@ -43,9 +39,10 @@ public class ProtobufSerializer {
             if (fieldAnnotation != null) {
                 ProtobufType protobufType = fieldAnnotation.protobufType();
                 // Check if field type is compatible with the protobuf type
+                // TODO allow list or iterable types
                 if (!TypeCompatibility.check(protobufType, field.getType())) {
-                    throw new ProtobufSerializationException("Incompatable field type and and protobuf type found: " +
-                            field.getType() + " " + protobufType);
+                    throw new ProtobufSerializationException("Incompatible field type=" + field.getType() +
+                            " and and protobuf type= " + protobufType);
                 }
                 // Serialize value
                 try {
@@ -54,19 +51,24 @@ public class ProtobufSerializer {
                 } catch (IllegalAccessException e) {
                     throw new ProtobufSerializationException(e.getMessage());
                 }
-
+            }
+            /**
+             * Embedded messages are treated in exactly the same way as strings (wire type = 2).
+             */
+            else if (messageAnnotation != null) {
+                // TODO check for circular references
+                try {
+                    ByteBuffer nestedMessage = serialize(new ByteArrayOutputStream(), field.get(message));
+                    if (nestedMessage.hasArray() && nestedMessage.array().length > 0) {
+                        appendPrefix(byteStream, ProtobufType.BYTES, fieldAnnotation.fieldNumber());
+                        appendLengthDelimited(byteStream, nestedMessage.array());
+                    }
+                } catch (IllegalAccessException e) {
+                    throw new ProtobufSerializationException(e.getMessage());
+                }
             }
         }
-        /**
-         * embedded messages are treated in exactly the same way as strings (wire type = 2).
-         */
-
-        /**
-         * A packed repeated field containing zero elements does not appear in the encoded message. Otherwise, all of the elements of the field are packed
-         * into a single key-value pair with wire type 2 (length-delimited). Each element is encoded the same way it would be normally,
-         * except without a key preceding it.
-         */
-        return null;
+        return ByteBuffer.wrap(byteStream.toByteArray());
     }
 
     private static boolean isMessageClass(Class clazz) {
@@ -82,10 +84,10 @@ public class ProtobufSerializer {
                 appendFixed32(byteStream, (Float) value);
                 break;
             case INT32:
-                appendFixed32(byteStream, (Integer) value);
+                appendVarint(byteStream, (Integer) value);
                 break;
             case INT64:
-                appendFixed64(byteStream, (Long) value);
+                appendVarint(byteStream, (Long) value);
             case UINT32:
                 break;
             case UINT64:

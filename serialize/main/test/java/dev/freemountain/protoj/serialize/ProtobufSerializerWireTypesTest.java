@@ -1,5 +1,6 @@
 package dev.freemountain.protoj.serialize;
 
+import static dev.freemountain.protoj.util.TestUtil.printBits;
 import static junit.framework.TestCase.assertTrue;
 import static junit.framework.TestCase.fail;
 
@@ -47,7 +48,6 @@ public class ProtobufSerializerWireTypesTest {
     public void multiVarint1() {
         ProtobufSerializer.appendVarint(testOut, 300);
         logger.debug("result={}", printBits(testOut.toByteArray()));
-//        1010 1100 0000 0010
         assertTrue(Arrays.equals(testOut.toByteArray(), new byte[]{(byte) 0xAC, 0x02}));
     }
 
@@ -153,15 +153,6 @@ public class ProtobufSerializerWireTypesTest {
         ProtobufSerializer.appendFixed32(testOut, 47.8721F);
         logger.debug("result={}", printBits(testOut.toByteArray()));
         assertTrue(Arrays.equals(testOut.toByteArray(), new byte[]{0x42, 0x3F, 0x7D, 0x08}));
-    }
-
-    private String printBits(byte[] bytes) {
-        List<String> bits = new ArrayList<>();
-        for (byte b : bytes) {
-            // Append a 1 @ bit 9 to print leading zeros
-            bits.add(Integer.toBinaryString((b & 0xFF) + 0x100).substring(1));
-        }
-        return bits.toString();
     }
 
 }
