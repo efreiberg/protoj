@@ -20,17 +20,34 @@ public class ProtobufSerializerTest {
     private final static Logger logger = LoggerFactory.getLogger(ProtobufSerializer.class);
 
     @Test(expected = ProtobufSerializationException.class)
-    public void serializeNoAMessageAnnotation() {
+    public void serializDuplicateFieldNumbers1() {
         class TestMessage {
             @ProtobufField(fieldNumber = 3, protobufType = ProtobufType.INT32)
             public int foo = 0;
+            @ProtobufField(fieldNumber = 3, protobufType = ProtobufType.INT64)
+            public Long bar = 0L;
+        }
+        ProtobufSerializer.serialize(new TestMessage());
+    }
+
+    @Test(expected = ProtobufSerializationException.class)
+    public void serializDuplicateFieldNumbers2() {
+        class TestMessage {
+            @ProtobufField(fieldNumber = 10, protobufType = ProtobufType.INT32)
+            public int foo = 10;
+            @ProtobufMessage(fieldNumber = 10)
+            public NestedTestMessage bar;
+
+            class NestedTestMessage {
+                @ProtobufField(fieldNumber = 1, protobufType = ProtobufType.INT32)
+                public int foo = 10;
+            }
         }
         ProtobufSerializer.serialize(new TestMessage());
     }
 
     @Test(expected = ProtobufSerializationException.class)
     public void serializeInvalidFieldNumber() {
-        @ProtobufMessage
         class TestMessage {
             @ProtobufField(fieldNumber = 0, protobufType = ProtobufType.INT32)
             public int foo = 10;
@@ -40,7 +57,6 @@ public class ProtobufSerializerTest {
 
     @Test(expected = ProtobufSerializationException.class)
     public void serializeFieldTypeMismatch() {
-        @ProtobufMessage
         class TestMessage {
             @ProtobufField(fieldNumber = 1, protobufType = ProtobufType.INT32)
             public Boolean foo = true;
@@ -50,7 +66,6 @@ public class ProtobufSerializerTest {
 
     @Test(expected = ProtobufSerializationException.class)
     public void serializeInvalidFieldType() {
-        @ProtobufMessage
         class TestMessage {
             @ProtobufField(fieldNumber = 1, protobufType = ProtobufType.INT32)
             public UUID foo = UUID.randomUUID();
@@ -60,7 +75,6 @@ public class ProtobufSerializerTest {
 
     @Test
     public void serializeSimple() {
-        @ProtobufMessage
         class TestMessage {
             @ProtobufField(fieldNumber = 1, protobufType = ProtobufType.INT32)
             public int foo = 2;

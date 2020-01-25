@@ -6,6 +6,8 @@ import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.BitSet;
+import java.util.HashSet;
+import java.util.Set;
 
 import dev.freemountain.protoj.api.ProtobufField;
 import dev.freemountain.protoj.internal.TypeCompatibility;
@@ -25,19 +27,20 @@ public class ProtobufSerializer {
 
     public static <T> ByteBuffer serialize(T message) {
         ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
-        return serialize(byteStream, message);
+        return serialize(byteStream, message, new HashSet<>());
     }
 
-    static <T> ByteBuffer serialize(ByteArrayOutputStream byteStream, T message) {
-        if (!isMessageClass(message.getClass())) {
-            throw new ProtobufSerializationException("Attempting to serialize non-message class " + message.getClass().getName());
-        }
+    static <T> ByteBuffer serialize(ByteArrayOutputStream byteStream, T message, Set<Integer> visitedFieldNumbers) {
         // Get serializable fields
         for (Field field : message.getClass().getDeclaredFields()) {
             ProtobufField fieldAnnotation = field.getAnnotation(ProtobufField.class);
-            ProtobufMessage messageAnnotation = field.getAnnotation(ProtobufMessage.class);
+            ProtobufMessage nestedMessageAnnotation = field.getAnnotation(ProtobufMessage.class);
             if (fieldAnnotation != null) {
                 ProtobufType protobufType = fieldAnnotation.protobufType();
+                Integer fieldNumber = fieldAnnotation.fieldNumber();
+                if(visitedFieldNumbers.contains(fieldNumber)){
+                    throw new ProtobufSerializationException("Duplicate field number " + fieldNumber);
+                }
                 // Check if field type is compatible with the protobuf type
                 // TODO allow list or iterable types
                 if (!TypeCompatibility.check(protobufType, field.getType())) {
@@ -46,8 +49,9 @@ public class ProtobufSerializer {
                 }
                 // Serialize value
                 try {
-                    appendPrefix(byteStream, protobufType, fieldAnnotation.fieldNumber());
+                    appendPrefix(byteStream, protobufType, fieldNumber);
                     append(byteStream, protobufType, field.get(message));
+                    visitedFieldNumbers.add(fieldNumber);
                 } catch (IllegalAccessException e) {
                     throw new ProtobufSerializationException(e.getMessage());
                 }
@@ -55,14 +59,19 @@ public class ProtobufSerializer {
             /**
              * Embedded messages are treated in exactly the same way as strings (wire type = 2).
              */
-            else if (messageAnnotation != null) {
+            else if (nestedMessageAnnotation != null) {
+                Integer fieldNumber = nestedMessageAnnotation.fieldNumber();
+                if(visitedFieldNumbers.contains(fieldNumber)){
+                    throw new ProtobufSerializationException("Duplicate field number " + fieldNumber);
+                }
                 // TODO check for circular references
                 try {
-                    ByteBuffer nestedMessage = serialize(new ByteArrayOutputStream(), field.get(message));
+                    ByteBuffer nestedMessage = serialize(new ByteArrayOutputStream(), field.get(message), new HashSet<>());
                     if (nestedMessage.hasArray() && nestedMessage.array().length > 0) {
-                        appendPrefix(byteStream, ProtobufType.BYTES, fieldAnnotation.fieldNumber());
+                        appendPrefix(byteStream, ProtobufType.BYTES, nestedMessageAnnotation.fieldNumber());
                         appendLengthDelimited(byteStream, nestedMessage.array());
                     }
+                    visitedFieldNumbers.add(fieldNumber);
                 } catch (IllegalAccessException e) {
                     throw new ProtobufSerializationException(e.getMessage());
                 }
@@ -88,21 +97,30 @@ public class ProtobufSerializer {
                 break;
             case INT64:
                 appendVarint(byteStream, (Long) value);
+                break;
             case UINT32:
+                appendVarint(byteStream, (Integer) value);
                 break;
             case UINT64:
+                appendVarint(byteStream, (Long) value);
                 break;
             case SINT32:
+                appendVarint(byteStream, (Integer) value);
                 break;
             case SINT64:
+                appendVarint(byteStream, (Long) value);
                 break;
             case SFIXED32:
+                appendFixed32(byteStream, (Integer) value);
                 break;
             case SFIXED64:
+                appendFixed64(byteStream, (Long) value);
                 break;
             case FIXED32:
+                appendFixed32(byteStream, (Integer) value);
                 break;
             case FIXED64:
+                appendFixed64(byteStream, (Long) value);
                 break;
             case BOOL:
                 appendVarint(byteStream, (boolean) value == true ? 1 : 0);
