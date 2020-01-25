@@ -49,8 +49,11 @@ public class ProtobufSerializer {
                 }
                 // Serialize value
                 try {
-                    appendPrefix(byteStream, protobufType, fieldNumber);
-                    append(byteStream, protobufType, field.get(message));
+                    // Skip adding missing values
+                    if(field.get(message) != null) {
+                        appendPrefix(byteStream, protobufType, fieldNumber);
+                        append(byteStream, protobufType, field.get(message));
+                    }
                     visitedFieldNumbers.add(fieldNumber);
                 } catch (IllegalAccessException e) {
                     throw new ProtobufSerializationException(e.getMessage());
@@ -66,10 +69,12 @@ public class ProtobufSerializer {
                 }
                 // TODO check for circular references
                 try {
-                    ByteBuffer nestedMessage = serialize(new ByteArrayOutputStream(), field.get(message), new HashSet<>());
-                    if (nestedMessage.hasArray() && nestedMessage.array().length > 0) {
-                        appendPrefix(byteStream, ProtobufType.BYTES, nestedMessageAnnotation.fieldNumber());
-                        appendLengthDelimited(byteStream, nestedMessage.array());
+                    if(field.get(message) != null) {
+                        ByteBuffer nestedMessage = serialize(new ByteArrayOutputStream(), field.get(message), new HashSet<>());
+                        if (nestedMessage.hasArray() && nestedMessage.array().length > 0) {
+                            appendPrefix(byteStream, ProtobufType.BYTES, nestedMessageAnnotation.fieldNumber());
+                            appendLengthDelimited(byteStream, nestedMessage.array());
+                        }
                     }
                     visitedFieldNumbers.add(fieldNumber);
                 } catch (IllegalAccessException e) {
@@ -78,10 +83,6 @@ public class ProtobufSerializer {
             }
         }
         return ByteBuffer.wrap(byteStream.toByteArray());
-    }
-
-    private static boolean isMessageClass(Class clazz) {
-        return clazz.getAnnotationsByType(ProtobufMessage.class).length > 0;
     }
 
     static <T> void append(ByteArrayOutputStream byteStream, ProtobufType type, Object value) {

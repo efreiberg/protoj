@@ -84,4 +84,33 @@ public class ProtobufSerializerTest {
         logger.debug("result={}", printBits(out.array()));
         assertTrue(Arrays.equals(out.array(), new byte[]{0x08, 0x02}));
     }
+
+    @Test
+    public void serializeSkipsNullValues1() {
+        class TestMessage {
+            @ProtobufField(fieldNumber = 1, protobufType = ProtobufType.INT32)
+            public Integer foo = null;
+        }
+        ByteBuffer out = ProtobufSerializer.serialize(new TestMessage());
+        assertTrue(out.hasArray());
+        logger.debug("result={}", printBits(out.array()));
+        assertTrue(Arrays.equals(out.array(), new byte[]{}));
+    }
+
+    @Test
+    public void serializeSkipsNullValues2() {
+        class TestMessage {
+            @ProtobufMessage(fieldNumber = 9)
+            public NestedTestMessage bar = null;
+
+            class NestedTestMessage {
+                @ProtobufField(fieldNumber = 2, protobufType = ProtobufType.INT32)
+                public int foo = 10;
+            }
+        }
+        ByteBuffer out = ProtobufSerializer.serialize(new TestMessage());
+        assertTrue(out.hasArray());
+        logger.debug("result={}", printBits(out.array()));
+        assertTrue(Arrays.equals(out.array(), new byte[]{}));
+    }
 }
