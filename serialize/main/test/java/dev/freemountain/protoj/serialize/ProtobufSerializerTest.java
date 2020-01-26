@@ -86,6 +86,25 @@ public class ProtobufSerializerTest {
     }
 
     @Test
+    public void serializeSimpleNested() {
+        class TestMessage {
+            @ProtobufField(fieldNumber = 1, protobufType = ProtobufType.INT32)
+            public int foo = 2;
+            @ProtobufMessage(fieldNumber = 2)
+            public NestedTestMessage bar = new NestedTestMessage();
+
+            class NestedTestMessage {
+                @ProtobufField(fieldNumber = 1, protobufType = ProtobufType.INT32)
+                public int foo = 2;
+            }
+        }
+        ByteBuffer out = ProtobufSerializer.serialize(new TestMessage());
+        assertTrue(out.hasArray());
+        logger.debug("result={}", printBits(out.array()));
+        assertTrue(Arrays.equals(out.array(), new byte[]{0x08, 0x02, 0x12, 0x02, 0x08, 0x02}));
+    }
+
+    @Test
     public void serializeSkipsNullValues1() {
         class TestMessage {
             @ProtobufField(fieldNumber = 1, protobufType = ProtobufType.INT32)
