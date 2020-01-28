@@ -10,4 +10,6 @@ import java.lang.annotation.Target;
 public @interface ProtobufField {
     int fieldNumber();
     ProtobufType protobufType();
+    String getterMethod() default "";
+    String setterMethod() default "";
 }

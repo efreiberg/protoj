@@ -17,9 +17,9 @@ import org.slf4j.LoggerFactory;
 import dev.freemountain.protoj.api.ProtobufSerializationException;
 import dev.freemountain.protoj.api.ProtobufType;
 
-public class ProtobufSerializerWireTypesTest {
+public class WireTypesSerializerTest {
 
-    private final static Logger logger = LoggerFactory.getLogger(ProtobufSerializer.class);
+    private final static Logger logger = LoggerFactory.getLogger(WireTypesSerializerTest.class);
     private ByteArrayOutputStream testOut;
 
     @Before

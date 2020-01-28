@@ -5,16 +5,13 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
-import java.util.BitSet;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 
 import dev.freemountain.protoj.api.ProtobufField;
 import dev.freemountain.protoj.internal.TypeCompatibility;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import dev.freemountain.protoj.api.ProtobufMessage;
 import dev.freemountain.protoj.api.ProtobufSerializationException;
 import dev.freemountain.protoj.api.ProtobufType;
 import dev.freemountain.protoj.internal.TypeMapper;
@@ -25,20 +22,26 @@ public class ProtobufSerializer {
     private static int MIN_FIELD_NUMBER = 1;
     private static int MAX_FIELD_NUMBER = (2 ^ 29) - 1;
 
-    public static <T> ByteBuffer serialize(T message) {
+    public static <T> ByteBuffer serialize(T message) throws ReflectiveOperationException {
         ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
-        return serialize(byteStream, message, new HashSet<>());
+        return serialize(byteStream, message, 0, new HashMap<>(), new HashSet<>());
     }
 
-    static <T> ByteBuffer serialize(ByteArrayOutputStream byteStream, T message, Set<Integer> visitedFieldNumbers) {
+    static <T> ByteBuffer serialize(ByteArrayOutputStream byteStream, T message, int numLevel,
+                                    HashMap<String, List<Integer>> visitedMessages, Set<Integer> visitedFieldNumbers) throws ReflectiveOperationException {
+        // Circular reference checks
+        String className = message.getClass().getName();
+        markClassAsVisited(className, numLevel, visitedMessages);
+        if (isCircularReference(className, numLevel, visitedMessages)) {
+            throw new ProtobufSerializationException("Circular reference found for  " + className);
+        }
         // Get serializable fields
         for (Field field : message.getClass().getDeclaredFields()) {
             ProtobufField fieldAnnotation = field.getAnnotation(ProtobufField.class);
-            ProtobufMessage nestedMessageAnnotation = field.getAnnotation(ProtobufMessage.class);
             if (fieldAnnotation != null) {
                 ProtobufType protobufType = fieldAnnotation.protobufType();
                 Integer fieldNumber = fieldAnnotation.fieldNumber();
-                if(visitedFieldNumbers.contains(fieldNumber)){
+                if (visitedFieldNumbers.contains(fieldNumber)) {
                     throw new ProtobufSerializationException("Duplicate field number " + fieldNumber);
                 }
                 // Check if field type is compatible with the protobuf type
@@ -47,42 +50,49 @@ public class ProtobufSerializer {
                     throw new ProtobufSerializationException("Incompatible field type=" + field.getType() +
                             " and and protobuf type= " + protobufType);
                 }
-                // Serialize value
-                try {
-                    // Skip adding missing values
-                    if(field.get(message) != null) {
-                        appendPrefix(byteStream, protobufType, fieldNumber);
-                        append(byteStream, protobufType, field.get(message));
-                    }
-                    visitedFieldNumbers.add(fieldNumber);
-                } catch (IllegalAccessException e) {
-                    throw new ProtobufSerializationException(e.getMessage());
+                // Has a custom getter method?
+                Object value;
+                if (fieldAnnotation.getterMethod().length() > 0) {
+                    value = message.getClass().getMethod(fieldAnnotation.getterMethod()).invoke(message);
+                } else {
+                    value = field.get(message);
                 }
-            }
-            /**
-             * Embedded messages are treated in exactly the same way as strings (wire type = 2).
-             */
-            else if (nestedMessageAnnotation != null) {
-                Integer fieldNumber = nestedMessageAnnotation.fieldNumber();
-                if(visitedFieldNumbers.contains(fieldNumber)){
-                    throw new ProtobufSerializationException("Duplicate field number " + fieldNumber);
-                }
-                // TODO check for circular references
-                try {
-                    if(field.get(message) != null) {
-                        ByteBuffer nestedMessage = serialize(new ByteArrayOutputStream(), field.get(message), new HashSet<>());
+                // Skip adding missing values
+                if (value != null) {
+                    /**
+                     * Embedded messages are treated in exactly the same way as strings (wire type = 2).
+                     */
+                    if (protobufType == ProtobufType.MESSAGE) {
+                        ByteBuffer nestedMessage = serialize(new ByteArrayOutputStream(), value, ++numLevel,
+                                visitedMessages, new HashSet<>());
                         if (nestedMessage.hasArray() && nestedMessage.array().length > 0) {
-                            appendPrefix(byteStream, ProtobufType.BYTES, nestedMessageAnnotation.fieldNumber());
+                            appendPrefix(byteStream, ProtobufType.BYTES, fieldNumber);
                             appendLengthDelimited(byteStream, nestedMessage.array());
                         }
+                    } else {
+                        appendPrefix(byteStream, protobufType, fieldNumber);
+                        append(byteStream, protobufType, value);
                     }
-                    visitedFieldNumbers.add(fieldNumber);
-                } catch (IllegalAccessException e) {
-                    throw new ProtobufSerializationException(e.getMessage());
                 }
+                visitedFieldNumbers.add(fieldNumber);
             }
         }
         return ByteBuffer.wrap(byteStream.toByteArray());
+    }
+
+    private static void markClassAsVisited(String className, int currentLevel, Map<String, List<Integer>> visitedMessages) {
+        if (!visitedMessages.containsKey(className)) {
+            visitedMessages.put(className, new ArrayList<>());
+        }
+        visitedMessages.get(className).add(currentLevel);
+    }
+
+    private static boolean isCircularReference(String className, int currentLevel, Map<String, List<Integer>> visitedMessages) {
+        // Has this class been seen at another recursion level already?
+        if (visitedMessages.containsKey(className)) {
+            return visitedMessages.get(className).stream().anyMatch(level -> level != currentLevel);
+        }
+        return false;
     }
 
     static <T> void append(ByteArrayOutputStream byteStream, ProtobufType type, Object value) {
@@ -94,32 +104,20 @@ public class ProtobufSerializer {
                 appendFixed32(byteStream, (Float) value);
                 break;
             case INT32:
-                appendVarint(byteStream, (Integer) value);
-                break;
-            case INT64:
-                appendVarint(byteStream, (Long) value);
-                break;
             case UINT32:
-                appendVarint(byteStream, (Integer) value);
-                break;
-            case UINT64:
-                appendVarint(byteStream, (Long) value);
-                break;
             case SINT32:
                 appendVarint(byteStream, (Integer) value);
                 break;
+            case INT64:
+            case UINT64:
             case SINT64:
                 appendVarint(byteStream, (Long) value);
                 break;
             case SFIXED32:
-                appendFixed32(byteStream, (Integer) value);
-                break;
-            case SFIXED64:
-                appendFixed64(byteStream, (Long) value);
-                break;
             case FIXED32:
                 appendFixed32(byteStream, (Integer) value);
                 break;
+            case SFIXED64:
             case FIXED64:
                 appendFixed64(byteStream, (Long) value);
                 break;

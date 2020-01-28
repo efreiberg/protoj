@@ -1,7 +1,6 @@
 package dev.freemountain.protoj.serialize;
 
 import dev.freemountain.protoj.api.ProtobufField;
-import dev.freemountain.protoj.api.ProtobufMessage;
 import dev.freemountain.protoj.api.ProtobufSerializationException;
 import dev.freemountain.protoj.api.ProtobufType;
 import org.junit.Test;
@@ -20,7 +19,7 @@ public class ProtobufSerializerTest {
     private final static Logger logger = LoggerFactory.getLogger(ProtobufSerializer.class);
 
     @Test(expected = ProtobufSerializationException.class)
-    public void serializDuplicateFieldNumbers1() {
+    public void serializeDuplicateFieldNumbers1() throws Exception {
         class TestMessage {
             @ProtobufField(fieldNumber = 3, protobufType = ProtobufType.INT32)
             public int foo = 0;
@@ -31,11 +30,11 @@ public class ProtobufSerializerTest {
     }
 
     @Test(expected = ProtobufSerializationException.class)
-    public void serializDuplicateFieldNumbers2() {
+    public void serializeDuplicateFieldNumbers2() throws Exception {
         class TestMessage {
             @ProtobufField(fieldNumber = 10, protobufType = ProtobufType.INT32)
             public int foo = 10;
-            @ProtobufMessage(fieldNumber = 10)
+            @ProtobufField(fieldNumber = 10, protobufType = ProtobufType.MESSAGE)
             public NestedTestMessage bar;
 
             class NestedTestMessage {
@@ -47,7 +46,7 @@ public class ProtobufSerializerTest {
     }
 
     @Test(expected = ProtobufSerializationException.class)
-    public void serializeInvalidFieldNumber() {
+    public void serializeInvalidFieldNumber() throws Exception {
         class TestMessage {
             @ProtobufField(fieldNumber = 0, protobufType = ProtobufType.INT32)
             public int foo = 10;
@@ -56,7 +55,7 @@ public class ProtobufSerializerTest {
     }
 
     @Test(expected = ProtobufSerializationException.class)
-    public void serializeFieldTypeMismatch() {
+    public void serializeFieldTypeMismatch() throws Exception {
         class TestMessage {
             @ProtobufField(fieldNumber = 1, protobufType = ProtobufType.INT32)
             public Boolean foo = true;
@@ -65,7 +64,7 @@ public class ProtobufSerializerTest {
     }
 
     @Test(expected = ProtobufSerializationException.class)
-    public void serializeInvalidFieldType() {
+    public void serializeInvalidFieldType() throws Exception {
         class TestMessage {
             @ProtobufField(fieldNumber = 1, protobufType = ProtobufType.INT32)
             public UUID foo = UUID.randomUUID();
@@ -74,7 +73,7 @@ public class ProtobufSerializerTest {
     }
 
     @Test
-    public void serializeSimple() {
+    public void serializeSimple() throws Exception {
         class TestMessage {
             @ProtobufField(fieldNumber = 1, protobufType = ProtobufType.INT32)
             public int foo = 2;
@@ -86,11 +85,11 @@ public class ProtobufSerializerTest {
     }
 
     @Test
-    public void serializeSimpleNested() {
+    public void serializeSimpleNested() throws Exception {
         class TestMessage {
             @ProtobufField(fieldNumber = 1, protobufType = ProtobufType.INT32)
             public int foo = 2;
-            @ProtobufMessage(fieldNumber = 2)
+            @ProtobufField(fieldNumber = 2, protobufType = ProtobufType.MESSAGE)
             public NestedTestMessage bar = new NestedTestMessage();
 
             class NestedTestMessage {
@@ -105,9 +104,9 @@ public class ProtobufSerializerTest {
     }
 
     @Test
-    public void serializeSkipsNullValues1() {
+    public void serializeSkipsNullValues1() throws Exception {
         class TestMessage {
-            @ProtobufField(fieldNumber = 1, protobufType = ProtobufType.INT32)
+            @ProtobufField(fieldNumber = 9, protobufType = ProtobufType.INT32)
             public Integer foo = null;
         }
         ByteBuffer out = ProtobufSerializer.serialize(new TestMessage());
@@ -117,9 +116,9 @@ public class ProtobufSerializerTest {
     }
 
     @Test
-    public void serializeSkipsNullValues2() {
+    public void serializeSkipsNullValues2() throws Exception {
         class TestMessage {
-            @ProtobufMessage(fieldNumber = 9)
+            @ProtobufField(fieldNumber = 1, protobufType = ProtobufType.MESSAGE)
             public NestedTestMessage bar = null;
 
             class NestedTestMessage {

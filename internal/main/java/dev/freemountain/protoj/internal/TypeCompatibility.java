@@ -15,27 +15,21 @@ public class TypeCompatibility {
             case FLOAT:
                 return (fieldType == Float.class || fieldType.getName() == "float");
             case INT32:
+            case UINT32:
+            case SINT32:
+            case SFIXED32:
+            case FIXED32:
                 return (fieldType == Integer.class || fieldType.getName() == "int");
             case INT64:
-                return (fieldType == Long.class || fieldType.getName() == "long");
-            case UINT32:
-                break;
             case UINT64:
-                break;
-            case SINT32:
-                break;
             case SINT64:
-                break;
-            case SFIXED32:
-                break;
             case SFIXED64:
-                break;
-            case FIXED32:
-                break;
             case FIXED64:
-                break;
+                return (fieldType == Long.class || fieldType.getName() == "long");
             case STRING:
                 return (fieldType == String.class);
+            case MESSAGE:
+                return (fieldType instanceof Object);
         }
         return false;
     }

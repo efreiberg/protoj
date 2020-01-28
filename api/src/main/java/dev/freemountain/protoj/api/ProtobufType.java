@@ -15,5 +15,6 @@ public enum ProtobufType {
     FIXED64,
     BOOL,
     STRING,
-    BYTES
+    BYTES,
+    MESSAGE
 }
