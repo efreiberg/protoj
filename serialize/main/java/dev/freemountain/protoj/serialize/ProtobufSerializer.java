@@ -18,6 +18,7 @@ import dev.freemountain.protoj.internal.TypeMapper;
 import dev.freemountain.protoj.internal.WireType;
 
 public class ProtobufSerializer {
+
     private final static Logger logger = LoggerFactory.getLogger(ProtobufSerializer.class);
     private static int MIN_FIELD_NUMBER = 1;
     private static int MAX_FIELD_NUMBER = (2 ^ 29) - 1;
@@ -32,7 +33,8 @@ public class ProtobufSerializer {
     }
 
     static <T> ByteBuffer serialize(ByteArrayOutputStream byteStream, T message, int numLevel,
-                                    HashMap<String, List<Integer>> visitedMessages, Set<Integer> visitedFieldNumbers) throws ReflectiveOperationException {
+        HashMap<String, List<Integer>> visitedMessages, Set<Integer> visitedFieldNumbers)
+        throws ReflectiveOperationException {
         // Circular reference checks
         String className = message.getClass().getName();
         markClassAsVisited(className, numLevel, visitedMessages);
@@ -52,7 +54,7 @@ public class ProtobufSerializer {
                 // TODO allow list or iterable types
                 if (!TypeCompatibility.check(protobufType, field.getType())) {
                     throw new ProtobufSerializationException("Incompatible field type=" + field.getType() +
-                            " and and protobuf type= " + protobufType);
+                        " and and protobuf type= " + protobufType);
                 }
                 // Has a custom getter method?
                 Object value;
@@ -68,7 +70,7 @@ public class ProtobufSerializer {
                      */
                     if (protobufType == ProtobufType.MESSAGE) {
                         ByteBuffer nestedMessage = serialize(new ByteArrayOutputStream(), value, ++numLevel,
-                                visitedMessages, new HashSet<>());
+                            visitedMessages, new HashSet<>());
                         if (nestedMessage.hasArray() && nestedMessage.array().length > 0) {
                             appendPrefix(byteStream, ProtobufType.BYTES, fieldNumber);
                             appendLengthDelimited(byteStream, nestedMessage.array());
@@ -84,14 +86,16 @@ public class ProtobufSerializer {
         return ByteBuffer.wrap(byteStream.toByteArray());
     }
 
-    private static void markClassAsVisited(String className, int currentLevel, Map<String, List<Integer>> visitedMessages) {
+    private static void markClassAsVisited(String className, int currentLevel,
+        Map<String, List<Integer>> visitedMessages) {
         if (!visitedMessages.containsKey(className)) {
             visitedMessages.put(className, new ArrayList<>());
         }
         visitedMessages.get(className).add(currentLevel);
     }
 
-    private static boolean isCircularReference(String className, int currentLevel, Map<String, List<Integer>> visitedMessages) {
+    private static boolean isCircularReference(String className, int currentLevel,
+        Map<String, List<Integer>> visitedMessages) {
         // Has this class been seen at another recursion level already?
         if (visitedMessages.containsKey(className)) {
             return visitedMessages.get(className).stream().anyMatch(level -> level != currentLevel);
@@ -222,8 +226,9 @@ public class ProtobufSerializer {
     }
 
     /**
-     * Each byte in a varint, except the last byte, has the most significant bit (msb) set – this indicates that there are further bytes to come.
-     * The lower 7 bits of each byte are used to store the two's complement representation of the number in groups of 7 bits, least significant group first.
+     * Each byte in a varint, except the last byte, has the most significant bit (msb) set – this indicates that there
+     * are further bytes to come. The lower 7 bits of each byte are used to store the two's complement representation of
+     * the number in groups of 7 bits, least significant group first.
      */
     static void appendVarint(ByteArrayOutputStream byteStream, long in) {
         if (byteStream == null) {

@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class TestUtil {
+
     public static String printBits(byte[] bytes) {
         List<String> bits = new ArrayList<>();
         for (byte b : bytes) {

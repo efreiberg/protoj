@@ -4,18 +4,14 @@ import static dev.freemountain.protoj.util.TestUtil.printBits;
 import static junit.framework.TestCase.assertTrue;
 import static junit.framework.TestCase.fail;
 
+import dev.freemountain.protoj.api.ProtobufSerializationException;
+import dev.freemountain.protoj.api.ProtobufType;
 import java.io.ByteArrayOutputStream;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
-
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import dev.freemountain.protoj.api.ProtobufSerializationException;
-import dev.freemountain.protoj.api.ProtobufType;
 
 public class WireTypesSerializerTest {
 
@@ -131,14 +127,16 @@ public class WireTypesSerializerTest {
     public void simpleFixed64Long() {
         ProtobufSerializer.appendFixed64(testOut, 10123982);
         logger.debug("result={}", printBits(testOut.toByteArray()));
-        assertTrue(Arrays.equals(testOut.toByteArray(), new byte[]{0x00, 0x00, 0x00, 0x00, 0x00, (byte) 0x9A, 0x7A, (byte) 0xCE}));
+        assertTrue(Arrays
+            .equals(testOut.toByteArray(), new byte[]{0x00, 0x00, 0x00, 0x00, 0x00, (byte) 0x9A, 0x7A, (byte) 0xCE}));
     }
 
     @Test
     public void simpleFixed64Double() {
         ProtobufSerializer.appendFixed64(testOut, -1284.123);
         logger.debug("result={}", printBits(testOut.toByteArray()));
-        assertTrue(Arrays.equals(testOut.toByteArray(), new byte[]{(byte) 0xC0, (byte) 0x94, 0x10, 0x7D, (byte) 0xF3, (byte) 0xB6, 0x45, (byte) 0xA2}));
+        assertTrue(Arrays.equals(testOut.toByteArray(),
+            new byte[]{(byte) 0xC0, (byte) 0x94, 0x10, 0x7D, (byte) 0xF3, (byte) 0xB6, 0x45, (byte) 0xA2}));
     }
 
     @Test

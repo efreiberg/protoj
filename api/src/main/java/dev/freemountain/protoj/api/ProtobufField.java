@@ -8,8 +8,12 @@ import java.lang.annotation.Target;
 @Target(ElementType.FIELD)
 @Retention(RetentionPolicy.RUNTIME)
 public @interface ProtobufField {
+
     int fieldNumber();
+
     ProtobufType protobufType();
+
     String getterMethod() default "";
+
     String setterMethod() default "";
 }
