@@ -22,6 +22,10 @@ public class ProtobufSerializer {
     private static int MIN_FIELD_NUMBER = 1;
     private static int MAX_FIELD_NUMBER = (2 ^ 29) - 1;
 
+    private ProtobufSerializer() {
+        throw new RuntimeException();
+    }
+
     public static <T> ByteBuffer serialize(T message) throws ReflectiveOperationException {
         ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
         return serialize(byteStream, message, 0, new HashMap<>(), new HashSet<>());
