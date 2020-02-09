@@ -47,6 +47,17 @@ public class WireTypesSerializerTest {
         assertTrue(Arrays.equals(testOut.toByteArray(), new byte[]{(byte) 0xAC, 0x02}));
     }
 
+    @Test
+    public void negativeVarint1() {
+        ProtobufSerializer.appendVarint(testOut, -1);
+        logger.debug("result={}", printBits(testOut.toByteArray()));
+        /**
+         *  If you use int32 or int64 as the type for a negative number, the resulting varint is always ten bytes long
+         */
+        assertTrue(Arrays.equals(testOut.toByteArray(), new byte[]{(byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF
+            , (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, 0x01}));
+    }
+
     /**
      * Prefix byte tests
      */

@@ -16,7 +16,7 @@ import org.slf4j.LoggerFactory;
 
 public class ProtobufSerializerTest {
 
-    private final static Logger logger = LoggerFactory.getLogger(ProtobufSerializer.class);
+    private final static Logger logger = LoggerFactory.getLogger(ProtobufSerializerTest.class);
 
     @Test(expected = ProtobufSerializationException.class)
     public void serializeDuplicateFieldNumbers1() throws Exception {
@@ -58,7 +58,7 @@ public class ProtobufSerializerTest {
         ProtobufSerializer.serialize(new TestMessage());
     }
 
-    @Test(expected = ProtobufSerializationException.class)
+    @Test(expected = ClassCastException.class)
     public void serializeFieldTypeMismatch() throws Exception {
         class TestMessage {
 
@@ -68,7 +68,7 @@ public class ProtobufSerializerTest {
         ProtobufSerializer.serialize(new TestMessage());
     }
 
-    @Test(expected = ProtobufSerializationException.class)
+    @Test(expected = ClassCastException.class)
     public void serializeInvalidFieldType() throws Exception {
         class TestMessage {
 

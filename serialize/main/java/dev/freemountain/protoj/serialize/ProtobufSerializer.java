@@ -1,21 +1,24 @@
 package dev.freemountain.protoj.serialize;
 
+import dev.freemountain.protoj.api.ProtobufField;
+import dev.freemountain.protoj.api.ProtobufSerializationException;
+import dev.freemountain.protoj.api.ProtobufType;
+import dev.freemountain.protoj.internal.TypeMapper;
+import dev.freemountain.protoj.internal.WireType;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
-
-import dev.freemountain.protoj.api.ProtobufField;
-import dev.freemountain.protoj.internal.TypeCompatibility;
+import java.util.ArrayList;
+import java.util.BitSet;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import dev.freemountain.protoj.api.ProtobufSerializationException;
-import dev.freemountain.protoj.api.ProtobufType;
-import dev.freemountain.protoj.internal.TypeMapper;
-import dev.freemountain.protoj.internal.WireType;
 
 public class ProtobufSerializer {
 
@@ -50,12 +53,6 @@ public class ProtobufSerializer {
                 if (visitedFieldNumbers.contains(fieldNumber)) {
                     throw new ProtobufSerializationException("Duplicate field number " + fieldNumber);
                 }
-                // Check if field type is compatible with the protobuf type
-                // TODO allow list or iterable types
-                if (!TypeCompatibility.check(protobufType, field.getType())) {
-                    throw new ProtobufSerializationException("Incompatible field type=" + field.getType() +
-                        " and and protobuf type= " + protobufType);
-                }
                 // Has a custom getter method?
                 Object value;
                 if (fieldAnnotation.getterMethod().length() > 0) {
@@ -65,20 +62,56 @@ public class ProtobufSerializer {
                 }
                 // Skip adding missing values
                 if (value != null) {
-                    /**
-                     * Embedded messages are treated in exactly the same way as strings (wire type = 2).
-                     */
-                    if (protobufType == ProtobufType.MESSAGE) {
-                        ByteBuffer nestedMessage = serialize(new ByteArrayOutputStream(), value, ++numLevel,
-                            visitedMessages, new HashSet<>());
-                        if (nestedMessage.hasArray() && nestedMessage.array().length > 0) {
-                            appendPrefix(byteStream, ProtobufType.BYTES, fieldNumber);
-                            appendLengthDelimited(byteStream, nestedMessage.array());
+                    if (value instanceof Iterable) {
+                        /**
+                         *  The encoded message has zero or more key-value pairs with the same field number.
+                         */
+                        if (protobufType == ProtobufType.MESSAGE) {
+                            for (Object iteratedValue : (Iterable) value) {
+                                ByteBuffer nestedMessage = serialize(new ByteArrayOutputStream(), iteratedValue, ++numLevel,
+                                    visitedMessages, new HashSet<>());
+                                if (nestedMessage.hasArray() && nestedMessage.array().length > 0) {
+                                    appendPrefix(byteStream, ProtobufType.BYTES, fieldNumber);
+                                    appendLengthDelimited(byteStream, nestedMessage.array());
+                                }
+                            }
+                        } else {
+                            /**
+                             * A packed repeated field containing zero elements does not appear in the encoded message.
+                             * Otherwise, all of the elements of the field are packed into a single key-value pair with wire
+                             * type 2 (length-delimited). Each element is encoded the same way it would be normally, except
+                             * without a key preceding it.
+                             *
+                             * Repeated fields of scalar numeric types are packed by default
+                             */
+                            ByteArrayOutputStream iterableBytes = new ByteArrayOutputStream();
+                            for (Object iteratedValue : (Iterable) value) {
+                                if (iteratedValue != null) {
+                                    append(iterableBytes, protobufType, iteratedValue);
+                                }
+                            }
+                            if (iterableBytes.size() > 0) {
+                                appendPrefix(byteStream, ProtobufType.BYTES, fieldNumber);
+                                appendLengthDelimited(byteStream, iterableBytes.toByteArray());
+                            }
                         }
                     } else {
-                        appendPrefix(byteStream, protobufType, fieldNumber);
-                        append(byteStream, protobufType, value);
+                        /**
+                         * Embedded messages are treated in exactly the same way as strings (wire type = 2).
+                         */
+                        if (protobufType == ProtobufType.MESSAGE) {
+                            ByteBuffer nestedMessage = serialize(new ByteArrayOutputStream(), value, ++numLevel,
+                                visitedMessages, new HashSet<>());
+                            if (nestedMessage.hasArray() && nestedMessage.array().length > 0) {
+                                appendPrefix(byteStream, ProtobufType.BYTES, fieldNumber);
+                                appendLengthDelimited(byteStream, nestedMessage.array());
+                            }
+                        } else {
+                            appendPrefix(byteStream, protobufType, fieldNumber);
+                            append(byteStream, protobufType, value);
+                        }
                     }
+
                 }
                 visitedFieldNumbers.add(fieldNumber);
             }
@@ -104,30 +137,31 @@ public class ProtobufSerializer {
     }
 
     static <T> void append(ByteArrayOutputStream byteStream, ProtobufType type, Object value) {
+        // TODO avoid boxing object instantiation
         switch (type) {
             case DOUBLE:
-                appendFixed64(byteStream, (Double) value);
+                appendFixed64(byteStream, (double) value);
                 break;
             case FLOAT:
-                appendFixed32(byteStream, (Float) value);
+                appendFixed32(byteStream, (float) value);
                 break;
             case INT32:
             case UINT32:
             case SINT32:
-                appendVarint(byteStream, (Integer) value);
+                appendVarint(byteStream, (int) value);
                 break;
             case INT64:
             case UINT64:
             case SINT64:
-                appendVarint(byteStream, (Long) value);
+                appendVarint(byteStream, (long) value);
                 break;
             case SFIXED32:
             case FIXED32:
-                appendFixed32(byteStream, (Integer) value);
+                appendFixed32(byteStream, (int) value);
                 break;
             case SFIXED64:
             case FIXED64:
-                appendFixed64(byteStream, (Long) value);
+                appendFixed64(byteStream, (long) value);
                 break;
             case BOOL:
                 appendVarint(byteStream, (boolean) value == true ? 1 : 0);
