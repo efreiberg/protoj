@@ -68,7 +68,7 @@ public class ProtobufSerializer {
                          */
                         if (protobufType == ProtobufType.MESSAGE) {
                             for (Object iteratedValue : (Iterable) value) {
-                                ByteBuffer nestedMessage = serialize(new ByteArrayOutputStream(), iteratedValue, ++numLevel,
+                                ByteBuffer nestedMessage = serialize(new ByteArrayOutputStream(), iteratedValue, numLevel,
                                     visitedMessages, new HashSet<>());
                                 if (nestedMessage.hasArray() && nestedMessage.array().length > 0) {
                                     appendPrefix(byteStream, ProtobufType.BYTES, fieldNumber);
