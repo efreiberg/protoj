@@ -9,8 +9,10 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.BitSet;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -22,9 +24,9 @@ import org.slf4j.LoggerFactory;
 
 public class ProtobufSerializer {
 
-    private final static Logger logger = LoggerFactory.getLogger(ProtobufSerializer.class);
-    private static int MIN_FIELD_NUMBER = 1;
-    private static int MAX_FIELD_NUMBER = (2 ^ 29) - 1;
+    private static final Logger logger = LoggerFactory.getLogger(ProtobufSerializer.class);
+    private static final int MIN_FIELD_NUMBER = 1;
+    private static final int MAX_FIELD_NUMBER = (int) Math.pow(2, 29) - 1;
 
     private ProtobufSerializer() {
         throw new RuntimeException();
@@ -68,7 +70,8 @@ public class ProtobufSerializer {
                          */
                         if (protobufType == ProtobufType.MESSAGE) {
                             for (Object iteratedValue : (Iterable) value) {
-                                ByteBuffer nestedMessage = serialize(new ByteArrayOutputStream(), iteratedValue, numLevel,
+                                ByteBuffer nestedMessage = serialize(new ByteArrayOutputStream(), iteratedValue,
+                                    numLevel,
                                     visitedMessages, new HashSet<>());
                                 if (nestedMessage.hasArray() && nestedMessage.array().length > 0) {
                                     appendPrefix(byteStream, ProtobufType.BYTES, fieldNumber);
@@ -136,8 +139,7 @@ public class ProtobufSerializer {
         return false;
     }
 
-    static <T> void append(ByteArrayOutputStream byteStream, ProtobufType type, Object value) {
-        // TODO avoid boxing object instantiation
+    static void append(ByteArrayOutputStream byteStream, ProtobufType type, Object value) {
         switch (type) {
             case DOUBLE:
                 appendFixed64(byteStream, (double) value);
@@ -185,7 +187,14 @@ public class ProtobufSerializer {
         if (in == null || in.length() == 0) {
             return;
         }
-        appendLengthDelimited(byteStream, StandardCharsets.UTF_8.encode(in).array());
+        /**
+         * A string must always contain UTF-8 encoded.
+         *
+         * The capacity of the underlying byte array storing the encoded string data can be greater than what is
+         * actually being used, so we trim off unused parts of the byte array.
+         */
+        ByteBuffer stringBuffer = StandardCharsets.UTF_8.encode(in);
+        appendLengthDelimited(byteStream, Arrays.copyOf(stringBuffer.array(), stringBuffer.limit()));
     }
 
     static void appendLengthDelimited(ByteArrayOutputStream byteStream, byte[] in) {
@@ -202,12 +211,15 @@ public class ProtobufSerializer {
         }
     }
 
+    /**
+     * Non-varint numeric type values are stored in little endian byte order.  Java is big endian.
+     */
     static void appendFixed32(ByteArrayOutputStream byteStream, int in) {
         if (byteStream == null) {
             byteStream = new ByteArrayOutputStream();
         }
         try {
-            byteStream.write(ByteBuffer.allocate(4).putInt(in).array());
+            byteStream.write(ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(in).array());
         } catch (IOException e) {
             throw new ProtobufSerializationException(e.getMessage());
         }
@@ -218,7 +230,7 @@ public class ProtobufSerializer {
             byteStream = new ByteArrayOutputStream();
         }
         try {
-            byteStream.write(ByteBuffer.allocate(4).putFloat(in).array());
+            byteStream.write(ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putFloat(in).array());
         } catch (IOException e) {
             throw new ProtobufSerializationException(e.getMessage());
         }
@@ -229,7 +241,7 @@ public class ProtobufSerializer {
             byteStream = new ByteArrayOutputStream();
         }
         try {
-            byteStream.write(ByteBuffer.allocate(8).putLong(in).array());
+            byteStream.write(ByteBuffer.allocate(8).order(ByteOrder.LITTLE_ENDIAN).putLong(in).array());
         } catch (IOException e) {
             throw new ProtobufSerializationException(e.getMessage());
         }
@@ -240,7 +252,7 @@ public class ProtobufSerializer {
             byteStream = new ByteArrayOutputStream();
         }
         try {
-            byteStream.write(ByteBuffer.allocate(8).putDouble(in).array());
+            byteStream.write(ByteBuffer.allocate(8).order(ByteOrder.LITTLE_ENDIAN).putDouble(in).array());
         } catch (IOException e) {
             throw new ProtobufSerializationException(e.getMessage());
         }
@@ -323,6 +335,10 @@ public class ProtobufSerializer {
 
     private static BitSet getEmptyBitSet() {
         return BitSet.valueOf(new byte[]{(byte) 0x80});
+    }
+
+    private static ByteBuffer getLittleEndianBuffer(int numBytes) {
+        return ByteBuffer.allocate(numBytes).order(ByteOrder.LITTLE_ENDIAN);
     }
 
 }

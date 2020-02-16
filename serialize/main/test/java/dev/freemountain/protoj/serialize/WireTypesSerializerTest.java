@@ -118,6 +118,14 @@ public class WireTypesSerializerTest {
     }
 
     @Test
+    public void trimsEmptyByteArraySpace() {
+        ProtobufSerializer.appendLengthDelimited(testOut, "hello world");
+        logger.debug("result={}", printBits(testOut.toByteArray()));
+        assertTrue(Arrays.equals(testOut.toByteArray(), new byte[]{0x0b, 0x68, 0x65, 0x6c, 0x6c, 0x6f, 0x20, 0x77,
+            0x6f, 0x72, 0x6c, 0x64}));
+    }
+
+    @Test
     public void emptyString() {
         ProtobufSerializer.appendLengthDelimited(testOut, "");
         logger.debug("result={}", printBits(testOut.toByteArray()));
@@ -139,7 +147,7 @@ public class WireTypesSerializerTest {
         ProtobufSerializer.appendFixed64(testOut, 10123982);
         logger.debug("result={}", printBits(testOut.toByteArray()));
         assertTrue(Arrays
-            .equals(testOut.toByteArray(), new byte[]{0x00, 0x00, 0x00, 0x00, 0x00, (byte) 0x9A, 0x7A, (byte) 0xCE}));
+            .equals(testOut.toByteArray(), new byte[]{(byte) 0xCE, 0x7A, (byte) 0x9A, 0x00, 0x00, 0x00, 0x00, 0x00}));
     }
 
     @Test
@@ -147,21 +155,21 @@ public class WireTypesSerializerTest {
         ProtobufSerializer.appendFixed64(testOut, -1284.123);
         logger.debug("result={}", printBits(testOut.toByteArray()));
         assertTrue(Arrays.equals(testOut.toByteArray(),
-            new byte[]{(byte) 0xC0, (byte) 0x94, 0x10, 0x7D, (byte) 0xF3, (byte) 0xB6, 0x45, (byte) 0xA2}));
+            new byte[]{(byte) 0xA2, 0x45, (byte) 0xB6, (byte) 0xF3, 0x7D, 0x10, (byte) 0x94, (byte) 0xC0}));
     }
 
     @Test
     public void simpleFixed32Int() {
         ProtobufSerializer.appendFixed32(testOut, 2020);
         logger.debug("result={}", printBits(testOut.toByteArray()));
-        assertTrue(Arrays.equals(testOut.toByteArray(), new byte[]{0x00, 0x00, 0x07, (byte) 0xE4}));
+        assertTrue(Arrays.equals(testOut.toByteArray(), new byte[]{(byte) 0xe4, 0x07, 0x00, 0x00}));
     }
 
     @Test
     public void simpleFixed32Float() {
         ProtobufSerializer.appendFixed32(testOut, 47.8721F);
         logger.debug("result={}", printBits(testOut.toByteArray()));
-        assertTrue(Arrays.equals(testOut.toByteArray(), new byte[]{0x42, 0x3F, 0x7D, 0x08}));
+        assertTrue(Arrays.equals(testOut.toByteArray(), new byte[]{0x08, 0x7D, 0x3F, 0x42}));
     }
 
 }
