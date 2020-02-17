@@ -64,15 +64,16 @@ public class ProtobufSerializer {
                 }
                 // Skip adding missing values
                 if (value != null) {
+
                     if (value instanceof Iterable) {
                         /**
                          *  The encoded message has zero or more key-value pairs with the same field number.
                          */
                         if (protobufType == ProtobufType.MESSAGE) {
+                            int nextLevel = ++numLevel;
                             for (Object iteratedValue : (Iterable) value) {
                                 ByteBuffer nestedMessage = serialize(new ByteArrayOutputStream(), iteratedValue,
-                                    numLevel,
-                                    visitedMessages, new HashSet<>());
+                                    nextLevel, visitedMessages, new HashSet<>());
                                 if (nestedMessage.hasArray() && nestedMessage.array().length > 0) {
                                     appendPrefix(byteStream, ProtobufType.BYTES, fieldNumber);
                                     appendLengthDelimited(byteStream, nestedMessage.array());

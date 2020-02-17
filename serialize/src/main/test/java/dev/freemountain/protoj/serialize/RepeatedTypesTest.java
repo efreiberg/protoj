@@ -16,9 +16,9 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class RepeatedTypesTests {
+public class RepeatedTypesTest {
 
-    private final static Logger logger = LoggerFactory.getLogger(RepeatedTypesTests.class);
+    private final static Logger logger = LoggerFactory.getLogger(RepeatedTypesTest.class);
 
     @Test(expected = ClassCastException.class)
     public void wrongGenericScalarTypeInList() throws Exception {
