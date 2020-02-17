@@ -14,6 +14,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -64,22 +65,26 @@ public class ProtobufSerializer {
                 }
                 // Skip adding missing values
                 if (value != null) {
-
-                    if (value instanceof Iterable) {
-                        /**
-                         *  The encoded message has zero or more key-value pairs with the same field number.
-                         */
-                        if (protobufType == ProtobufType.MESSAGE) {
-                            int nextLevel = ++numLevel;
-                            for (Object iteratedValue : (Iterable) value) {
-                                ByteBuffer nestedMessage = serialize(new ByteArrayOutputStream(), iteratedValue,
-                                    nextLevel, visitedMessages, new HashSet<>());
-                                if (nestedMessage.hasArray() && nestedMessage.array().length > 0) {
-                                    appendPrefix(byteStream, ProtobufType.BYTES, fieldNumber);
-                                    appendLengthDelimited(byteStream, nestedMessage.array());
-                                }
+                    boolean isIterable = value instanceof Iterable;
+                    /**
+                     *  Embedded messages are treated in exactly the same way as strings (wire type = 2).
+                     *  If repeated, the encoded message has zero or more key-value pairs with the same field number.
+                     */
+                    if (protobufType == ProtobufType.MESSAGE) {
+                        int nextLevel = ++numLevel;
+                        if (!isIterable) {
+                            value = Collections.singletonList(value);
+                        }
+                        for (Object iteratedValue : (Iterable) value) {
+                            ByteBuffer nestedMessage = serialize(new ByteArrayOutputStream(), iteratedValue,
+                                nextLevel, visitedMessages, new HashSet<>());
+                            if (nestedMessage.hasArray() && nestedMessage.array().length > 0) {
+                                appendPrefix(byteStream, ProtobufType.BYTES, fieldNumber);
+                                appendLengthDelimited(byteStream, nestedMessage.array());
                             }
-                        } else {
+                        }
+                    } else {
+                        if (isIterable) {
                             /**
                              * A packed repeated field containing zero elements does not appear in the encoded message.
                              * Otherwise, all of the elements of the field are packed into a single key-value pair with wire
@@ -98,24 +103,11 @@ public class ProtobufSerializer {
                                 appendPrefix(byteStream, ProtobufType.BYTES, fieldNumber);
                                 appendLengthDelimited(byteStream, iterableBytes.toByteArray());
                             }
-                        }
-                    } else {
-                        /**
-                         * Embedded messages are treated in exactly the same way as strings (wire type = 2).
-                         */
-                        if (protobufType == ProtobufType.MESSAGE) {
-                            ByteBuffer nestedMessage = serialize(new ByteArrayOutputStream(), value, ++numLevel,
-                                visitedMessages, new HashSet<>());
-                            if (nestedMessage.hasArray() && nestedMessage.array().length > 0) {
-                                appendPrefix(byteStream, ProtobufType.BYTES, fieldNumber);
-                                appendLengthDelimited(byteStream, nestedMessage.array());
-                            }
                         } else {
                             appendPrefix(byteStream, protobufType, fieldNumber);
                             append(byteStream, protobufType, value);
                         }
                     }
-
                 }
                 visitedFieldNumbers.add(fieldNumber);
             }
