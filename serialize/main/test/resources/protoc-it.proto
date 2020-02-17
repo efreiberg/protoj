@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+message tester {
+  int32 foo = 1;
+  int64 bar = 11237;
+  double baz = 985691;
+  nestedTester nested = 2;
+  repeated int32 list = 17;
+}
+
+message nestedTester {
+  float foo = 9;
+  bool bar = 2;
+  string baz = 7;
+}

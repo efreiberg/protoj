@@ -337,8 +337,4 @@ public class ProtobufSerializer {
         return BitSet.valueOf(new byte[]{(byte) 0x80});
     }
 
-    private static ByteBuffer getLittleEndianBuffer(int numBytes) {
-        return ByteBuffer.allocate(numBytes).order(ByteOrder.LITTLE_ENDIAN);
-    }
-
 }

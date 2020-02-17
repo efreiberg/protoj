@@ -1,6 +1,6 @@
 package dev.freemountain.protoj.serialize;
 
-import static dev.freemountain.protoj.util.TestUtil.printBits;
+import static dev.freemountain.protoj.serialize.TestUtil.printBits;
 import static junit.framework.TestCase.assertTrue;
 
 import dev.freemountain.protoj.api.ProtobufField;

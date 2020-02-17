@@ -1,4 +1,4 @@
-package dev.freemountain.protoj.util;
+package dev.freemountain.protoj.serialize;
 
 import java.util.ArrayList;
 import java.util.List;
