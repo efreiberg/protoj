@@ -276,59 +276,26 @@ public class ProtobufSerializer {
         }
         // Wrap all byte stream writing in try/catch
         try {
-            long inputBitMask = 1L;
             // Just exit early if zero
             if (in == 0) {
-                byteStream.write(new byte[]{0x00});
+                byteStream.write(new byte[]{0});
                 return;
             }
-            int numLeadingZeros = getLeadingZeros(in);
-            int lastIdx = (64 - numLeadingZeros);
+            BitSet inAsBitSet = BitSet.valueOf(new long[]{in});
+            int numLeadingZeros = Long.numberOfLeadingZeros(in);
+            int lastIdx = (64 - numLeadingZeros) - 1;
             // Iterate over bits of input, skipping leading zeros
-            BitSet curByte = getEmptyBitSet();
-            for (int i = 0; i < lastIdx; i++) {
-                int curByteOffset = i % 7;
-                boolean isLastBit = (i == lastIdx - 1);
-                // get bit at the given index
-                long maskedInput = in & inputBitMask;
-                // set corresponding, zero-indexed bit on current byte.
-                curByte.set(curByteOffset, maskedInput != 0);
-                inputBitMask <<= 1;
-                // Write last byte, set MSB to 0
-                if (isLastBit) {
-                    curByte.set(7, false);
-                    byteStream.write(curByte.toByteArray());
-                }
-                // Write full byte (7 bits + indicator)
-                else if (curByteOffset == 6) {
-                    byteStream.write(curByte.toByteArray());
-                    curByte = getEmptyBitSet();
-                }
+            for (int i = 0; i <= lastIdx; i = i + 7) {
+                boolean isLastByte = (i + 7 > lastIdx);
+                // last index to copy is exclusive
+                int lastIdxToCopy = isLastByte ? lastIdx + 1 : i + 7 + 1;
+                BitSet curByte = inAsBitSet.get(i, lastIdxToCopy);
+                curByte.set(7, !isLastByte);
+                byteStream.write(curByte.toByteArray());
             }
         } catch (IOException e) {
             throw new ProtobufSerializationException(e.getMessage());
         }
-    }
-
-    private static int getLeadingZeros(long value) {
-        // TODO can probably do this as a binary search
-        long bitMask = Long.MIN_VALUE;
-        int count = 0;
-        for (int i = 0; i < 64; i++) {
-            boolean isZero = (value & bitMask) == 0;
-            if (isZero) {
-                count++;
-                // Shift in zeros
-                bitMask >>>= 1;
-            } else {
-                break;
-            }
-        }
-        return count;
-    }
-
-    private static BitSet getEmptyBitSet() {
-        return BitSet.valueOf(new byte[]{(byte) 0x80});
     }
 
 }
