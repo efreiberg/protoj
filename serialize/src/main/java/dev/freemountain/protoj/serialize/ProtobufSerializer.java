@@ -283,12 +283,12 @@ public class ProtobufSerializer {
             }
             BitSet inAsBitSet = BitSet.valueOf(new long[]{in});
             int numLeadingZeros = Long.numberOfLeadingZeros(in);
-            int lastIdx = (64 - numLeadingZeros) - 1;
+            int lastIdx = 64 - numLeadingZeros;
             // Iterate over bits of input, skipping leading zeros
-            for (int i = 0; i <= lastIdx; i = i + 7) {
-                boolean isLastByte = (i + 7 > lastIdx);
+            for (int i = 0; i < lastIdx; i = i + 7) {
+                boolean isLastByte = (i + 7 >= lastIdx);
                 // last index to copy is exclusive
-                int lastIdxToCopy = isLastByte ? lastIdx + 1 : i + 7 + 1;
+                int lastIdxToCopy = isLastByte ? lastIdx : i + 7;
                 BitSet curByte = inAsBitSet.get(i, lastIdxToCopy);
                 curByte.set(7, !isLastByte);
                 byteStream.write(curByte.toByteArray());
