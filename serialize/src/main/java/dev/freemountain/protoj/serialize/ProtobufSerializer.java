@@ -53,9 +53,11 @@ public class ProtobufSerializer {
             if (fieldAnnotation != null) {
                 ProtobufType protobufType = fieldAnnotation.protobufType();
                 Integer fieldNumber = fieldAnnotation.fieldNumber();
+                // Ensure field numbers are unique
                 if (visitedFieldNumbers.contains(fieldNumber)) {
                     throw new ProtobufSerializationException("Duplicate field number " + fieldNumber);
                 }
+                visitedFieldNumbers.add(fieldNumber);
                 // Has a custom getter method?
                 Object value;
                 if (fieldAnnotation.getterMethod().length() > 0) {
@@ -109,7 +111,6 @@ public class ProtobufSerializer {
                         }
                     }
                 }
-                visitedFieldNumbers.add(fieldNumber);
             }
         }
         return ByteBuffer.wrap(byteStream.toByteArray());
