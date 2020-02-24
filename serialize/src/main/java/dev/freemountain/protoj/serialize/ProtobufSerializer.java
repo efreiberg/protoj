@@ -44,6 +44,7 @@ public class ProtobufSerializer {
         String className = message.getClass().getName();
         markClassAsVisited(className, numLevel, visitedMessages);
         if (isCircularReference(className, numLevel, visitedMessages)) {
+            logger.error("Circular reference found for class={} nestedLevel={}", className, numLevel);
             throw new ProtobufSerializationException("Circular reference found for  " + className);
         }
         // Get serializable fields
@@ -54,6 +55,8 @@ public class ProtobufSerializer {
                 Integer fieldNumber = fieldAnnotation.fieldNumber();
                 // Ensure field numbers are unique
                 if (visitedFieldNumbers.contains(fieldNumber)) {
+                    logger.error("Duplicate field found at for class={} field={} nestedLevel={} number={}", className,
+                        field.getName(), numLevel, fieldNumber);
                     throw new ProtobufSerializationException("Duplicate field number " + fieldNumber);
                 }
                 visitedFieldNumbers.add(fieldNumber);
@@ -70,7 +73,9 @@ public class ProtobufSerializer {
                         Swallowing checked reflection exceptions since they won't be recoverable w/o programming changes
                         anyway
                      */
-                    logger.error("Error during reflection operation error={}", e.getMessage());
+                    logger
+                        .error("Error during reflection operation class={} field={} nestedLevel={} number={} error={}",
+                            className, field.getName(), numLevel, fieldNumber, e.getMessage());
                     throw new ProtobufSerializationException(e.getMessage());
                 }
                 // Skip adding missing values
