@@ -14,6 +14,4 @@ public @interface ProtobufField {
     ProtobufType protobufType();
 
     String getterMethod() default "";
-
-    String setterMethod() default "";
 }

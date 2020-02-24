@@ -30,7 +30,7 @@ public class ProtobufSerializer {
     private static final int MAX_FIELD_NUMBER = (int) Math.pow(2, 29) - 1;
 
     private ProtobufSerializer() {
-        throw new RuntimeException();
+        throw new RuntimeException("You shouldn't be here");
     }
 
     public static <T> ByteBuffer serialize(T message) throws ReflectiveOperationException {
@@ -289,7 +289,9 @@ public class ProtobufSerializer {
                 boolean isLastByte = (i + 7 >= lastIdx);
                 // last index to copy is exclusive
                 int lastIdxToCopy = isLastByte ? lastIdx : i + 7;
+                // copy bits from input
                 BitSet curByte = inAsBitSet.get(i, lastIdxToCopy);
+                // set msb
                 curByte.set(7, !isLastByte);
                 byteStream.write(curByte.toByteArray());
             }
