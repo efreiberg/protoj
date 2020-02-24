@@ -4,6 +4,7 @@ import static dev.freemountain.protoj.serialize.TestUtil.printBits;
 import static junit.framework.TestCase.assertTrue;
 
 import dev.freemountain.protoj.api.ProtobufField;
+import dev.freemountain.protoj.api.ProtobufSerializationException;
 import dev.freemountain.protoj.api.ProtobufType;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
@@ -15,7 +16,7 @@ public class CustomGetterTest {
 
     private final static Logger logger = LoggerFactory.getLogger(CustomGetterTest.class);
 
-    @Test(expected = IllegalAccessException.class)
+    @Test(expected = ProtobufSerializationException.class)
     public void accessingPrivateThrows() throws Exception {
         class TestMessage {
 
@@ -25,7 +26,7 @@ public class CustomGetterTest {
         ProtobufSerializer.serialize(new TestMessage());
     }
 
-    @Test(expected = NoSuchMethodException.class)
+    @Test(expected = ProtobufSerializationException.class)
     public void wrongGetter() throws Exception {
         class TestMessage {
 

@@ -33,14 +33,13 @@ public class ProtobufSerializer {
         throw new RuntimeException("You shouldn't be here");
     }
 
-    public static <T> ByteBuffer serialize(T message) throws ReflectiveOperationException {
+    public static <T> ByteBuffer serialize(T message) throws IOException {
         ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
         return serialize(byteStream, message, 0, new HashMap<>(), new HashSet<>());
     }
 
     static <T> ByteBuffer serialize(ByteArrayOutputStream byteStream, T message, int numLevel,
-        HashMap<String, List<Integer>> visitedMessages, Set<Integer> visitedFieldNumbers)
-        throws ReflectiveOperationException {
+        HashMap<String, List<Integer>> visitedMessages, Set<Integer> visitedFieldNumbers) throws IOException {
         // Circular reference checks
         String className = message.getClass().getName();
         markClassAsVisited(className, numLevel, visitedMessages);
@@ -60,10 +59,18 @@ public class ProtobufSerializer {
                 visitedFieldNumbers.add(fieldNumber);
                 // Has a custom getter method?
                 Object value;
-                if (fieldAnnotation.getterMethod().length() > 0) {
-                    value = message.getClass().getMethod(fieldAnnotation.getterMethod()).invoke(message);
-                } else {
-                    value = field.get(message);
+                try {
+                    if (fieldAnnotation.getterMethod().length() > 0) {
+                        value = message.getClass().getMethod(fieldAnnotation.getterMethod()).invoke(message);
+                    } else {
+                        value = field.get(message);
+                    }
+                } catch (ReflectiveOperationException e) {
+                    /*
+                        Swallowing checked reflection exceptions since they won't be recoverable w/o programming changes
+                        anyway
+                     */
+                    throw new ProtobufSerializationException(e.getMessage());
                 }
                 // Skip adding missing values
                 if (value != null) {
@@ -82,7 +89,7 @@ public class ProtobufSerializer {
                                 nextLevel, visitedMessages, new HashSet<>());
                             if (nestedMessage.hasArray() && nestedMessage.array().length > 0) {
                                 appendPrefix(byteStream, ProtobufType.BYTES, fieldNumber);
-                                appendLengthDelimited(byteStream, nestedMessage.array());
+                                append(byteStream, ProtobufType.BYTES, nestedMessage.array());
                             }
                         }
                     } else {
@@ -103,7 +110,7 @@ public class ProtobufSerializer {
                             }
                             if (iterableBytes.size() > 0) {
                                 appendPrefix(byteStream, ProtobufType.BYTES, fieldNumber);
-                                appendLengthDelimited(byteStream, iterableBytes.toByteArray());
+                                append(byteStream, ProtobufType.BYTES, iterableBytes.toByteArray());
                             }
                         } else {
                             appendPrefix(byteStream, protobufType, fieldNumber);
@@ -133,7 +140,7 @@ public class ProtobufSerializer {
         return false;
     }
 
-    static void append(ByteArrayOutputStream byteStream, ProtobufType type, Object value) {
+    static void append(ByteArrayOutputStream byteStream, ProtobufType type, Object value) throws IOException {
         switch (type) {
             case DOUBLE:
                 appendFixed64(byteStream, (double) value);
@@ -174,10 +181,7 @@ public class ProtobufSerializer {
     /**
      * varint encoded length followed by the specified number of bytes of data.
      */
-    static void appendLengthDelimited(ByteArrayOutputStream byteStream, String in) {
-        if (byteStream == null) {
-            byteStream = new ByteArrayOutputStream();
-        }
+    static void appendLengthDelimited(ByteArrayOutputStream byteStream, String in) throws IOException {
         if (in == null || in.length() == 0) {
             return;
         }
@@ -191,72 +195,34 @@ public class ProtobufSerializer {
         appendLengthDelimited(byteStream, Arrays.copyOf(stringBuffer.array(), stringBuffer.limit()));
     }
 
-    static void appendLengthDelimited(ByteArrayOutputStream byteStream, byte[] in) {
-        if (byteStream == null) {
-            byteStream = new ByteArrayOutputStream();
-        }
+    static void appendLengthDelimited(ByteArrayOutputStream byteStream, byte[] in) throws IOException {
         // Add # of bytes
         appendVarint(byteStream, in.length);
         // Add content
-        try {
-            byteStream.write(in);
-        } catch (IOException e) {
-            throw new ProtobufSerializationException(e.getMessage());
-        }
+        byteStream.write(in);
     }
 
     /**
      * Non-varint numeric type values are stored in little endian byte order.  Java is big endian.
      */
-    static void appendFixed32(ByteArrayOutputStream byteStream, int in) {
-        if (byteStream == null) {
-            byteStream = new ByteArrayOutputStream();
-        }
-        try {
-            byteStream.write(ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(in).array());
-        } catch (IOException e) {
-            throw new ProtobufSerializationException(e.getMessage());
-        }
+    static void appendFixed32(ByteArrayOutputStream byteStream, int in) throws IOException {
+        byteStream.write(ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(in).array());
     }
 
-    static void appendFixed32(ByteArrayOutputStream byteStream, float in) {
-        if (byteStream == null) {
-            byteStream = new ByteArrayOutputStream();
-        }
-        try {
-            byteStream.write(ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putFloat(in).array());
-        } catch (IOException e) {
-            throw new ProtobufSerializationException(e.getMessage());
-        }
+    static void appendFixed32(ByteArrayOutputStream byteStream, float in) throws IOException {
+        byteStream.write(ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putFloat(in).array());
     }
 
-    static void appendFixed64(ByteArrayOutputStream byteStream, long in) {
-        if (byteStream == null) {
-            byteStream = new ByteArrayOutputStream();
-        }
-        try {
-            byteStream.write(ByteBuffer.allocate(8).order(ByteOrder.LITTLE_ENDIAN).putLong(in).array());
-        } catch (IOException e) {
-            throw new ProtobufSerializationException(e.getMessage());
-        }
+    static void appendFixed64(ByteArrayOutputStream byteStream, long in) throws IOException {
+        byteStream.write(ByteBuffer.allocate(8).order(ByteOrder.LITTLE_ENDIAN).putLong(in).array());
     }
 
-    static void appendFixed64(ByteArrayOutputStream byteStream, double in) {
-        if (byteStream == null) {
-            byteStream = new ByteArrayOutputStream();
-        }
-        try {
-            byteStream.write(ByteBuffer.allocate(8).order(ByteOrder.LITTLE_ENDIAN).putDouble(in).array());
-        } catch (IOException e) {
-            throw new ProtobufSerializationException(e.getMessage());
-        }
+    static void appendFixed64(ByteArrayOutputStream byteStream, double in) throws IOException {
+        byteStream.write(ByteBuffer.allocate(8).order(ByteOrder.LITTLE_ENDIAN).putDouble(in).array());
     }
 
     // Each key in the streamed message is a varint with the value (field_number << 3) | wire_type
-    static void appendPrefix(ByteArrayOutputStream byteStream, ProtobufType type, int fieldNumber) {
-        if (byteStream == null) {
-            byteStream = new ByteArrayOutputStream();
-        }
+    static void appendPrefix(ByteArrayOutputStream byteStream, ProtobufType type, int fieldNumber) throws IOException {
         if (fieldNumber > MAX_FIELD_NUMBER || fieldNumber < MIN_FIELD_NUMBER) {
             throw new ProtobufSerializationException("Invalid field number " + fieldNumber);
         }
@@ -270,33 +236,28 @@ public class ProtobufSerializer {
      * are further bytes to come. The lower 7 bits of each byte are used to store the two's complement representation of
      * the number in groups of 7 bits, least significant group first.
      */
-    static void appendVarint(ByteArrayOutputStream byteStream, long in) {
+    static void appendVarint(ByteArrayOutputStream byteStream, long in) throws IOException {
         if (byteStream == null) {
             byteStream = new ByteArrayOutputStream();
         }
-        // Wrap all byte stream writing in try/catch
-        try {
-            // Just exit early if zero
-            if (in == 0) {
-                byteStream.write(new byte[]{0});
-                return;
-            }
-            BitSet inAsBitSet = BitSet.valueOf(new long[]{in});
-            int numLeadingZeros = Long.numberOfLeadingZeros(in);
-            int lastIdx = 64 - numLeadingZeros;
-            // Iterate over bits of input, skipping leading zeros
-            for (int i = 0; i < lastIdx; i = i + 7) {
-                boolean isLastByte = (i + 7 >= lastIdx);
-                // last index to copy is exclusive
-                int lastIdxToCopy = isLastByte ? lastIdx : i + 7;
-                // copy bits from input
-                BitSet curByte = inAsBitSet.get(i, lastIdxToCopy);
-                // set msb
-                curByte.set(7, !isLastByte);
-                byteStream.write(curByte.toByteArray());
-            }
-        } catch (IOException e) {
-            throw new ProtobufSerializationException(e.getMessage());
+        // Just exit early if zero
+        if (in == 0) {
+            byteStream.write(new byte[]{0});
+            return;
+        }
+        BitSet inAsBitSet = BitSet.valueOf(new long[]{in});
+        int numLeadingZeros = Long.numberOfLeadingZeros(in);
+        int lastIdx = 64 - numLeadingZeros;
+        // Iterate over bits of input, skipping leading zeros
+        for (int i = 0; i < lastIdx; i = i + 7) {
+            boolean isLastByte = (i + 7 >= lastIdx);
+            // last index to copy is exclusive
+            int lastIdxToCopy = isLastByte ? lastIdx : i + 7;
+            // copy bits from input
+            BitSet curByte = inAsBitSet.get(i, lastIdxToCopy);
+            // set msb
+            curByte.set(7, !isLastByte);
+            byteStream.write(curByte.toByteArray());
         }
     }
 

@@ -27,28 +27,28 @@ public class WireTypesSerializerTest {
      * Varint tests
      */
     @Test
-    public void simpleVarint0() {
+    public void simpleVarint0() throws Exception {
         ProtobufSerializer.appendVarint(testOut, 0);
         logger.debug("result={}", printBits(testOut.toByteArray()));
         assertTrue(Arrays.equals(testOut.toByteArray(), new byte[]{0x00}));
     }
 
     @Test
-    public void simpleVarint1() {
+    public void simpleVarint1() throws Exception {
         ProtobufSerializer.appendVarint(testOut, 1);
         logger.debug("result={}", printBits(testOut.toByteArray()));
         assertTrue(Arrays.equals(testOut.toByteArray(), new byte[]{0x01}));
     }
 
     @Test
-    public void multiVarint1() {
+    public void multiVarint1() throws Exception {
         ProtobufSerializer.appendVarint(testOut, 300);
         logger.debug("result={}", printBits(testOut.toByteArray()));
         assertTrue(Arrays.equals(testOut.toByteArray(), new byte[]{(byte) 0xAC, 0x02}));
     }
 
     @Test
-    public void negativeVarint1() {
+    public void negativeVarint1() throws Exception {
         ProtobufSerializer.appendVarint(testOut, -1);
         logger.debug("result={}", printBits(testOut.toByteArray()));
         /**
@@ -62,35 +62,35 @@ public class WireTypesSerializerTest {
      * Prefix byte tests
      */
     @Test
-    public void simpleWireType0() {
+    public void simpleWireType0() throws Exception {
         ProtobufSerializer.appendPrefix(testOut, ProtobufType.INT32, 1);
         logger.debug("result={}", printBits(testOut.toByteArray()));
         assertTrue(Arrays.equals(testOut.toByteArray(), new byte[]{0x08}));
     }
 
     @Test
-    public void simpleWireType1() {
+    public void simpleWireType1() throws Exception {
         ProtobufSerializer.appendPrefix(testOut, ProtobufType.FIXED64, 2);
         logger.debug("result={}", printBits(testOut.toByteArray()));
         assertTrue(Arrays.equals(testOut.toByteArray(), new byte[]{0x11}));
     }
 
     @Test
-    public void simpleWireType2() {
+    public void simpleWireType2() throws Exception {
         ProtobufSerializer.appendPrefix(testOut, ProtobufType.STRING, 5);
         logger.debug("result={}", printBits(testOut.toByteArray()));
         assertTrue(Arrays.equals(testOut.toByteArray(), new byte[]{0x2a}));
     }
 
     @Test
-    public void simpleWireType5() {
+    public void simpleWireType5() throws Exception {
         ProtobufSerializer.appendPrefix(testOut, ProtobufType.FLOAT, 15);
         logger.debug("result={}", printBits(testOut.toByteArray()));
         assertTrue(Arrays.equals(testOut.toByteArray(), new byte[]{0x7d}));
     }
 
     @Test
-    public void invalidFieldNumberMin() {
+    public void invalidFieldNumberMin() throws Exception {
         try {
             ProtobufSerializer.appendPrefix(testOut, ProtobufType.FLOAT, 0);
             fail();
@@ -99,7 +99,7 @@ public class WireTypesSerializerTest {
     }
 
     @Test
-    public void invalidFieldNumberMax() {
+    public void invalidFieldNumberMax() throws Exception {
         try {
             ProtobufSerializer.appendPrefix(testOut, ProtobufType.FLOAT, Integer.MAX_VALUE);
             fail();
@@ -111,14 +111,14 @@ public class WireTypesSerializerTest {
      * Length delimited
      */
     @Test
-    public void simpleString() {
+    public void simpleString() throws Exception {
         ProtobufSerializer.appendLengthDelimited(testOut, "testing");
         logger.debug("result={}", printBits(testOut.toByteArray()));
         assertTrue(Arrays.equals(testOut.toByteArray(), new byte[]{0x07, 0x74, 0x65, 0x73, 0x74, 0x69, 0x6e, 0x67}));
     }
 
     @Test
-    public void trimsEmptyByteArraySpace() {
+    public void trimsEmptyByteArraySpace() throws Exception {
         ProtobufSerializer.appendLengthDelimited(testOut, "hello world");
         logger.debug("result={}", printBits(testOut.toByteArray()));
         assertTrue(Arrays.equals(testOut.toByteArray(), new byte[]{0x0b, 0x68, 0x65, 0x6c, 0x6c, 0x6f, 0x20, 0x77,
@@ -126,14 +126,14 @@ public class WireTypesSerializerTest {
     }
 
     @Test
-    public void emptyString() {
+    public void emptyString() throws Exception {
         ProtobufSerializer.appendLengthDelimited(testOut, "");
         logger.debug("result={}", printBits(testOut.toByteArray()));
         assertTrue(Arrays.equals(testOut.toByteArray(), new byte[]{}));
     }
 
     @Test
-    public void nullString() {
+    public void nullString() throws Exception {
         ProtobufSerializer.appendLengthDelimited(testOut, (String) null);
         logger.debug("result={}", printBits(testOut.toByteArray()));
         assertTrue(Arrays.equals(testOut.toByteArray(), new byte[]{}));
@@ -143,7 +143,7 @@ public class WireTypesSerializerTest {
      * Fixed Types
      */
     @Test
-    public void simpleFixed64Long() {
+    public void simpleFixed64Long() throws Exception {
         ProtobufSerializer.appendFixed64(testOut, 10123982);
         logger.debug("result={}", printBits(testOut.toByteArray()));
         assertTrue(Arrays
@@ -151,7 +151,7 @@ public class WireTypesSerializerTest {
     }
 
     @Test
-    public void simpleFixed64Double() {
+    public void simpleFixed64Double() throws Exception {
         ProtobufSerializer.appendFixed64(testOut, -1284.123);
         logger.debug("result={}", printBits(testOut.toByteArray()));
         assertTrue(Arrays.equals(testOut.toByteArray(),
@@ -159,14 +159,14 @@ public class WireTypesSerializerTest {
     }
 
     @Test
-    public void simpleFixed32Int() {
+    public void simpleFixed32Int() throws Exception {
         ProtobufSerializer.appendFixed32(testOut, 2020);
         logger.debug("result={}", printBits(testOut.toByteArray()));
         assertTrue(Arrays.equals(testOut.toByteArray(), new byte[]{(byte) 0xe4, 0x07, 0x00, 0x00}));
     }
 
     @Test
-    public void simpleFixed32Float() {
+    public void simpleFixed32Float() throws Exception {
         ProtobufSerializer.appendFixed32(testOut, 47.8721F);
         logger.debug("result={}", printBits(testOut.toByteArray()));
         assertTrue(Arrays.equals(testOut.toByteArray(), new byte[]{0x08, 0x7D, 0x3F, 0x42}));
