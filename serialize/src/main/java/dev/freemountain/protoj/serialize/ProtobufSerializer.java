@@ -70,12 +70,13 @@ public class ProtobufSerializer {
                         Swallowing checked reflection exceptions since they won't be recoverable w/o programming changes
                         anyway
                      */
+                    logger.error("Error during reflection operation error={}", e.getMessage());
                     throw new ProtobufSerializationException(e.getMessage());
                 }
                 // Skip adding missing values
                 if (value != null) {
                     boolean isIterable = value instanceof Iterable;
-                    /**
+                    /*
                      *  Embedded messages are treated in exactly the same way as strings (wire type = 2).
                      *  If repeated, the encoded message has zero or more key-value pairs with the same field number.
                      */
@@ -94,7 +95,7 @@ public class ProtobufSerializer {
                         }
                     } else {
                         if (isIterable) {
-                            /**
+                            /*
                              * A packed repeated field containing zero elements does not appear in the encoded message.
                              * Otherwise, all of the elements of the field are packed into a single key-value pair with wire
                              * type 2 (length-delimited). Each element is encoded the same way it would be normally, except
@@ -185,7 +186,7 @@ public class ProtobufSerializer {
         if (in == null || in.length() == 0) {
             return;
         }
-        /**
+        /*
          * A string must always contain UTF-8 encoded.
          *
          * The capacity of the underlying byte array storing the encoded string data can be greater than what is
