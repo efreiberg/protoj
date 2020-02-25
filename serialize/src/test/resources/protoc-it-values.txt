@@ -1,0 +1,9 @@
+foo: 19371283
+bar: 9174917261277
+baz: 659819.1246
+list: [-1, 4, 171487, -149]
+nested: {
+  foo: 7.80
+  bar: true
+  baz: "H3LlO W0RLd"
+}
